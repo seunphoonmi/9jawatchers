@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>9jaWatchers — Earn With Every Click</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Inter', sans-serif; background: #0f1f13; color: #e2e8f0; min-height: 100vh; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #0f1f13; }
+    ::-webkit-scrollbar-thumb { background: #22c55e44; border-radius: 10px; }
+    input, select, button { font-family: 'Inter', sans-serif; outline: none; }
+    input::placeholder { color: #4a5568; }
+    * { transition: background 0.15s, border-color 0.15s, color 0.15s; }
+    .sidebar-scroll { overflow-y: auto; height: calc(100vh - 180px); }
+    .main-scroll { overflow-y: auto; height: 100vh; }
+    @media (max-width: 768px) {
+      .sidebar { display: none !important; }
+      .main-content { padding: 16px !important; }
+    }
+    .hover-green:hover { background: #22c55e22 !important; }
+    .btn-green:hover { transform: translateY(-1px); box-shadow: 0 4px 20px #22c55e44; }
+    .btn-gold:hover  { transform: translateY(-1px); box-shadow: 0 4px 20px #f59e0b44; }
+    .card-hover:hover { border-color: #22c55e66 !important; transform: translateY(-2px); }
+    .task-card { transition: all 0.2s; }
+    .task-card:hover { transform: translateX(4px); }
+    .progress-bar { transition: width 0.5s ease; }
+    .countdown-ring { animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.7} }
+    .fade-in { animation: fadeIn 0.4s ease; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+    .badge-glow { box-shadow: 0 0 8px currentColor; }
+    .gradient-text { background: linear-gradient(135deg,#22c55e,#f59e0b); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+    .modal-overlay { position:fixed;inset:0;background:#000000cc;display:flex;align-items:center;justify-content:center;z-index:9999; }
+    .nav-item { cursor:pointer; border-radius:10px; padding:10px 12px; display:flex; align-items:center; gap:10px; margin-bottom:4px; font-size:14px; font-weight:500; color:#94a3b8; }
+    .nav-item.active { background:#22c55e22; color:#22c55e; font-weight:700; }
+    .nav-item:hover { background:#22c55e11; color:#22c55e; }
+    .plan-card { border-radius:18px; padding:28px; flex:1; min-width:260px; transition:all 0.3s; }
+    .plan-card:hover { transform:translateY(-4px); }
+    .stat-card { border-radius:14px; padding:18px 20px; flex:1; min-width:130px; }
+    .withdraw-input { width:100%; background:#0f1f13; border:1px solid #22c55e22; border-radius:10px; padding:11px 14px; color:#e2e8f0; font-size:14px; }
+    .withdraw-input:focus { border-color:#22c55e66; }
+    select.withdraw-input option { background:#162a1b; }
+    .timer-circle { width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+// ─── CONSTANTS ───────────────────────────────────────────────────────────────
+const C = {
+  dark:    '#0f1f13',
+  card:    '#162a1b',
+  green:   '#22c55e',
+  gold:    '#f59e0b',
+  purple:  '#a855f7',
+  blue:    '#3b82f6',
+  red:     '#ef4444',
+  pink:    '#ec4899',
+  muted:   '#94a3b8',
+  text:    '#e2e8f0',
+  border:  '#22c55e22',
+};
+
+const naira = (n) => `₦${Number(n || 0).toLocaleString()}`;
+
+const TASK_ICON  = { video:'▶', follow:'👤', like:'❤️', comment:'💬' };
+const TASK_COLOR = { video:C.red, follow:C.blue, like:C.pink, comment:C.gold };
+
+const BASE_TASKS = [
+  { id:1, type:'video',   title:'Watch GTBank 2025 Brand Video',        url:'https://youtube.com', reward:5  },
+  { id:2, type:'video',   title:'Watch Flutterwave Campaign Video',      url:'https://youtube.com', reward:5  },
+  { id:3, type:'video',   title:'Watch Dangote Foundation Advert',       url:'https://youtube.com', reward:5  },
+  { id:4, type:'follow',  title:'Follow @NigerianStartups on Instagram', url:'https://instagram.com',reward:5 },
+  { id:5, type:'follow',  title:'Follow @TechPointNG on Twitter',        url:'https://twitter.com', reward:5  },
+  { id:6, type:'like',    title:'Like Paystack New Feature Post',        url:'https://twitter.com', reward:3  },
+  { id:7, type:'like',    title:'Like Africa Fintech Festival Post',     url:'https://instagram.com',reward:3 },
+  { id:8, type:'comment', title:'Comment on MTN Data Offer Post',        url:'https://facebook.com',reward:2  },
+];
+
+const PREMIUM_EXTRA = [
+  { id:9,  type:'video',   title:'Watch Konga Flash Sale 2025',           url:'https://youtube.com', reward:5 },
+  { id:10, type:'video',   title:'Watch Zenith Bank Digital Ad',          url:'https://youtube.com', reward:5 },
+  { id:11, type:'follow',  title:'Follow @LagosTechHub on LinkedIn',      url:'https://linkedin.com',reward:5 },
+  { id:12, type:'follow',  title:'Follow @NaijaTech on Instagram',        url:'https://instagram.com',reward:5},
+  { id:13, type:'follow',  title:'Follow @AfricanStartups on Twitter',    url:'https://twitter.com', reward:5 },
+  { id:14, type:'like',    title:'Like Cowrywise Investment Tips Post',   url:'https://twitter.com', reward:3 },
+  { id:15, type:'like',    title:'Like Carbon Financial Services Post',   url:'https://instagram.com',reward:3},
+  { id:16, type:'comment', title:'Comment on Piggyvest Savings Post',     url:'https://instagram.com',reward:2},
+  { id:17, type:'comment', title:'Comment on ChipperCash Promo',          url:'https://facebook.com',reward:2 },
+  { id:18, type:'video',   title:'Watch Access Bank Youth Campaign',      url:'https://youtube.com', reward:5 },
+  { id:19, type:'follow',  title:'Follow @StartupNation on Twitter',      url:'https://twitter.com', reward:5 },
+  { id:20, type:'like',    title:'Like Andela Nigeria Careers Post',      url:'https://linkedin.com',reward:3 },
+];
+
+// ─── UI PRIMITIVES ───────────────────────────────────────────────────────────
+function Badge({ children, color = C.green }) {
+  return (
+    <span style={{ background:`${color}22`, color, border:`1px solid ${color}55`,
+      borderRadius:20, padding:'2px 10px', fontSize:11, fontWeight:700, whiteSpace:'nowrap' }}>
+      {children}
+    </span>
+  );
+}
+
+function Btn({ children, onClick, disabled, variant='green', size='md', full, style={} }) {
+  const variants = {
+    green:  { bg:`linear-gradient(135deg,${C.green},#16a34a)`, color:'#000', shadow:`${C.green}44` },
+    gold:   { bg:`linear-gradient(135deg,${C.gold},#d97706)`,  color:'#000', shadow:`${C.gold}44`  },
+    purple: { bg:`linear-gradient(135deg,${C.purple},#7c3aed)`,color:'#fff', shadow:`${C.purple}44`},
+    ghost:  { bg:'transparent', color:C.green, shadow:'transparent' },
+    danger: { bg:`${C.red}22`,  color:C.red,   shadow:'transparent' },
+  };
+  const v = variants[variant] || variants.green;
+  const pad = size === 'sm' ? '8px 18px' : '13px 28px';
+  const fz  = size === 'sm' ? 13 : 15;
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`btn-${variant}`}
+      style={{
+        background: disabled ? '#1a2e1a' : v.bg,
+        color: disabled ? C.muted : v.color,
+        border: variant === 'ghost' ? `1px solid ${C.green}` : variant === 'danger' ? `1px solid ${C.red}44` : 'none',
+        borderRadius:10, padding:pad, fontWeight:700, fontSize:fz,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        width: full ? '100%' : 'auto',
+        ...style,
+      }}>
+      {children}
+    </button>
+  );
+}
+
+function StatCard({ label, value, icon, color = C.green }) {
+  return (
+    <div className="stat-card" style={{ background:C.card, border:`1px solid ${color}33` }}>
+      <div style={{ fontSize:26, marginBottom:6 }}>{icon}</div>
+      <div style={{ color, fontSize:22, fontWeight:800 }}>{value}</div>
+      <div style={{ color:C.muted, fontSize:12, marginTop:4 }}>{label}</div>
+    </div>
+  );
+}
+
+function Logo({ size = 'md' }) {
+  const s = size === 'sm' ? { box:28, font:14 } : { box:40, font:20 };
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+      <div style={{ background:`linear-gradient(135deg,${C.green},${C.gold})`, borderRadius:10,
+        width:s.box, height:s.box, display:'flex', alignItems:'center', justifyContent:'center',
+        fontWeight:900, color:'#000', fontSize:s.font, flexShrink:0 }}>9</div>
+      <span style={{ fontWeight:900, fontSize:s.font, color:C.green }}>9jaWatchers</span>
+    </div>
+  );
+}
+
+function Divider() {
+  return <div style={{ height:1, background:C.border, margin:'12px 0' }} />;
+}
+
+// ─── TASK CARD ────────────────────────────────────────────────────────────────
+function TaskCard({ task, onComplete }) {
+  const [state, setState] = useState(task.done ? 'done' : 'idle');
+  const [secs, setSecs]   = useState(50);
+  const timer = useRef(null);
+
+  const startTask = () => {
+    window.open(task.url, '_blank');
+    setState('counting');
+    let s = 50;
+    timer.current = setInterval(() => {
+      s--;
+      setSecs(s);
+      if (s <= 0) {
+        clearInterval(timer.current);
+        setState('done');
+        onComplete(task.id, task.reward);
+      }
+    }, 1000);
+  };
+
+  useEffect(() => () => clearInterval(timer.current), []);
+
+  const col = TASK_COLOR[task.type] || C.green;
+  const isDone = state === 'done' || task.done;
+
+  return (
+    <div className="task-card" style={{
+      background:C.card, borderRadius:14,
+      border:`1px solid ${isDone ? C.green+'44' : C.border}`,
+      borderLeft:`4px solid ${isDone ? C.green : col}`,
+      padding:'16px 18px', display:'flex', alignItems:'center',
+      justifyContent:'space-between', gap:14, opacity: isDone ? 0.7 : 1,
+    }}>
+      <div style={{ display:'flex', alignItems:'center', gap:14, flex:1, minWidth:0 }}>
+        <div style={{ fontSize:22, flexShrink:0 }}>{TASK_ICON[task.type]}</div>
+        <div style={{ minWidth:0 }}>
+          <div style={{ fontWeight:700, fontSize:14, marginBottom:4,
+            whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+            {task.title}
+          </div>
+          <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+            <Badge color={col}>{task.type}</Badge>
+            <Badge color={C.gold}>+{naira(task.reward)}</Badge>
+          </div>
+        </div>
+      </div>
+      <div style={{ flexShrink:0, textAlign:'right' }}>
+        {isDone ? (
+          <span style={{ color:C.green, fontWeight:700, fontSize:13 }}>✓ Done</span>
+        ) : state === 'idle' ? (
+          <Btn size="sm" onClick={startTask}>Start</Btn>
+        ) : (
+          <div style={{ textAlign:'center' }}>
+            <div className="timer-circle" style={{ background:`${C.gold}22`, border:`2px solid ${C.gold}` }}>
+              <div style={{ color:C.gold, fontWeight:900, fontSize:18, lineHeight:1 }}>{secs}</div>
+              <div style={{ color:C.muted, fontSize:9 }}>secs</div>
+            </div>
+            <div style={{ width:60, height:3, background:'#1a2e1a', borderRadius:4, marginTop:6 }}>
+              <div className="progress-bar" style={{ width:`${((50-secs)/50)*100}%`,
+                height:'100%', background:C.gold, borderRadius:4 }} />
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── SIDEBAR ──────────────────────────────────────────────────────────────────
+function Sidebar({ items, active, setPage, plan, pendingCount, onLogout, onUpgrade }) {
+  const isPremium = plan === 'premium' || plan === 'admin';
+  return (
+    <div className="sidebar" style={{ width:220, background:C.card, borderRight:`1px solid ${C.border}`,
+      display:'flex', flexDirection:'column', height:'100vh', flexShrink:0 }}>
+      <div style={{ padding:'20px 16px 16px', borderBottom:`1px solid ${C.border}` }}>
+        <Logo size="sm" />
+        {plan !== 'admin' && (
+          <div style={{ marginTop:14, display:'flex', alignItems:'center', gap:10 }}>
+            <div style={{ width:36, height:36, borderRadius:'50%', flexShrink:0,
+              background: isPremium ? `linear-gradient(135deg,${C.purple},#7c3aed)` : `linear-gradient(135deg,${C.green},#16a34a)`,
+              display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, color:'#fff', fontSize:14 }}>
+              O
+            </div>
+            <div>
+              <div style={{ fontWeight:700, fontSize:13, marginBottom:4 }}>Oluwaseun</div>
+              <Badge color={isPremium ? C.purple : C.green}>{isPremium ? 'Premium' : 'Basic'}</Badge>
+            </div>
+          </div>
+        )}
+        {plan === 'admin' && (
+          <div style={{ marginTop:10 }}><Badge color={C.red}>Admin Panel</Badge></div>
+        )}
+      </div>
+
+      <div className="sidebar-scroll" style={{ padding:'12px 8px', flex:1 }}>
+        {items.map(n => (
+          <div key={n.id} className={`nav-item${active === n.id ? ' active' : ''}`}
+            onClick={() => setPage(n.id)}>
+            <span style={{ fontSize:16 }}>{n.icon}</span>
+            <span style={{ flex:1 }}>{n.label}</span>
+            {n.badge > 0 && (
+              <span style={{ background:C.red, color:'#fff', borderRadius:'50%', width:18, height:18,
+                fontSize:10, display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800 }}>
+                {n.badge}
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div style={{ padding:'12px 8px', borderTop:`1px solid ${C.border}` }}>
+        {plan === 'basic' && (
+          <Btn variant="gold" size="sm" full onClick={onUpgrade}
+            style={{ marginBottom:8 }}>⬆ Upgrade to Premium</Btn>
+        )}
+        <Btn variant="ghost" size="sm" full onClick={onLogout}>Logout</Btn>
+      </div>
+    </div>
+  );
+}
+
+// ─── LANDING PAGE ─────────────────────────────────────────────────────────────
+function LandingPage({ goTo }) {
+  return (
+    <div style={{ minHeight:'100vh', background:C.dark }}>
+      {/* NAV */}
+      <nav style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
+        padding:'16px 32px', borderBottom:`1px solid ${C.border}`, position:'sticky', top:0,
+        background:C.dark, zIndex:100 }}>
+        <Logo />
+        <div style={{ display:'flex', gap:10 }}>
+          <Btn variant="ghost" size="sm" onClick={() => goTo('login')}>Login</Btn>
+          <Btn size="sm" onClick={() => goTo('signup')}>Get Started</Btn>
+        </div>
+      </nav>
+
+      {/* HERO */}
+      <div style={{ textAlign:'center', padding:'80px 20px 60px' }} className="fade-in">
+        <div style={{ display:'inline-block', background:`${C.gold}22`, border:`1px solid ${C.gold}55`,
+          borderRadius:20, padding:'4px 14px', fontSize:12, fontWeight:700, color:C.gold, marginBottom:20 }}>
+          🇳🇬 Nigeria's #1 Earning Platform
+        </div>
+        <h1 style={{ fontSize:52, fontWeight:900, lineHeight:1.1, marginBottom:16 }}>
+          Earn with Every <span className="gradient-text">Click</span>
+        </h1>
+        <p style={{ color:C.muted, fontSize:18, maxWidth:520, margin:'0 auto 36px', lineHeight:1.6 }}>
+          Watch videos, follow accounts, like and comment on posts — get paid directly to your Nigerian bank account.
+        </p>
+        <div style={{ display:'flex', gap:14, justifyContent:'center', flexWrap:'wrap' }}>
+          <Btn onClick={() => goTo('signup')}>🚀 Start Earning Today</Btn>
+          <Btn variant="ghost" onClick={() => document.getElementById('plans').scrollIntoView({behavior:'smooth'})}>
+            See Plans ↓
+          </Btn>
+        </div>
+      </div>
+
+      {/* STATS */}
+      <div style={{ display:'flex', justifyContent:'center', gap:50, padding:'10px 20px 60px', flexWrap:'wrap' }}>
+        {[['₦2,400+','Max Earned Daily (Basic)'],['₦6,000+','Max Earned Daily (Premium)'],['24hrs','Withdrawal Processing'],['100%','Paystack Secured']].map(([v,l]) => (
+          <div key={l} style={{ textAlign:'center' }}>
+            <div style={{ fontSize:30, fontWeight:900, color:C.green }}>{v}</div>
+            <div style={{ color:C.muted, fontSize:13, marginTop:4 }}>{l}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* HOW IT WORKS */}
+      <div style={{ background:C.card, padding:'60px 20px', borderTop:`1px solid ${C.border}` }}>
+        <h2 style={{ textAlign:'center', fontSize:30, fontWeight:800, marginBottom:40 }}>How It Works</h2>
+        <div style={{ display:'flex', justifyContent:'center', gap:30, flexWrap:'wrap', maxWidth:900, margin:'0 auto' }}>
+          {[['1','Sign Up & Activate','Register and pay your activation fee via Paystack to unlock your plan.','💳'],
+            ['2','Complete Daily Tasks','Watch videos, follow accounts, like and comment on posts.','📋'],
+            ['3','Earn Naira','Every completed task credits your wallet instantly.','💰'],
+            ['4','Withdraw','Request a withdrawal to your bank account anytime.','🏦']].map(([n,t,d,ic]) => (
+            <div key={n} style={{ textAlign:'center', maxWidth:200 }}>
+              <div style={{ width:56, height:56, borderRadius:'50%',
+                background:`linear-gradient(135deg,${C.green},#16a34a)`,
+                display:'flex', alignItems:'center', justifyContent:'center',
+                fontWeight:900, fontSize:22, color:'#000', margin:'0 auto 14px' }}>{ic}</div>
+              <div style={{ fontWeight:800, fontSize:15, marginBottom:6 }}>{t}</div>
+              <div style={{ color:C.muted, fontSize:13, lineHeight:1.5 }}>{d}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* PLANS */}
+      <div id="plans" style={{ maxWidth:860, margin:'0 auto', padding:'70px 20px' }}>
+        <h2 style={{ textAlign:'center', fontSize:30, fontWeight:800, marginBottom:10 }}>Choose Your Plan</h2>
+        <p style={{ textAlign:'center', color:C.muted, fontSize:14, marginBottom:40 }}>One-time activation fee. No monthly charges. Earn forever.</p>
+        <div style={{ display:'flex', gap:24, flexWrap:'wrap' }}>
+          {/* BASIC */}
+          <div className="plan-card" style={{ background:C.card, border:`1px solid ${C.border}` }}>
+            <Badge color={C.green}>Basic</Badge>
+            <div style={{ fontSize:38, fontWeight:900, margin:'16px 0 4px' }}>₦4,000</div>
+            <div style={{ color:C.muted, fontSize:13, marginBottom:22 }}>One-time activation fee</div>
+            {['8 tasks per day','₦500 signup bonus','₦500 per referral','Videos, Follows, Likes, Comments','Direct bank withdrawal','Min ₦2,000 withdrawal'].map(f => (
+              <div key={f} style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10, fontSize:14 }}>
+                <span style={{ color:C.green, fontWeight:800 }}>✓</span> {f}
+              </div>
+            ))}
+            <Btn full onClick={() => goTo('signup')} style={{ marginTop:20 }}>Activate Basic</Btn>
+          </div>
+          {/* PREMIUM */}
+          <div className="plan-card" style={{ background:C.card, border:`2px solid ${C.purple}`, position:'relative' }}>
+            <div style={{ position:'absolute', top:-14, right:20,
+              background:`linear-gradient(135deg,${C.gold},#d97706)`, color:'#000',
+              fontWeight:800, fontSize:11, borderRadius:20, padding:'4px 14px' }}>BEST VALUE ⭐</div>
+            <Badge color={C.purple}>Premium</Badge>
+            <div style={{ fontSize:38, fontWeight:900, margin:'16px 0 4px', color:C.purple }}>₦8,000</div>
+            <div style={{ color:C.muted, fontSize:13, marginBottom:22 }}>One-time activation fee</div>
+            {['20 tasks per day','₦1,000 signup bonus','₦1,000 per referral','All task types + priority tasks','Priority withdrawals','Min ₦2,000 withdrawal'].map(f => (
+              <div key={f} style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10, fontSize:14 }}>
+                <span style={{ color:C.purple, fontWeight:800 }}>✓</span> {f}
+              </div>
+            ))}
+            <Btn variant="purple" full onClick={() => goTo('signup')} style={{ marginTop:20 }}>Activate Premium</Btn>
+          </div>
+        </div>
+      </div>
+
+      {/* EARNING TABLE */}
+      <div style={{ background:C.card, padding:'60px 20px', borderTop:`1px solid ${C.border}` }}>
+        <h2 style={{ textAlign:'center', fontSize:26, fontWeight:800, marginBottom:30 }}>Earning Breakdown</h2>
+        <div style={{ maxWidth:600, margin:'0 auto' }}>
+          {[['▶ Watch Video','₦5 per video','3/day','₦15/day'],
+            ['👤 Follow Account','₦5 per follow','5/day','₦25/day'],
+            ['❤️ Like Post','₦3 per like','varies','₦9+/day'],
+            ['💬 Comment on Post','₦2 per comment','varies','₦6+/day']].map(([t,r,lim,max]) => (
+            <div key={t} style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
+              background:C.dark, border:`1px solid ${C.border}`, borderRadius:12,
+              padding:'14px 20px', marginBottom:10 }}>
+              <div style={{ fontWeight:600, fontSize:14 }}>{t}</div>
+              <div style={{ display:'flex', gap:14, alignItems:'center' }}>
+                <Badge color={C.gold}>{r}</Badge>
+                <span style={{ color:C.muted, fontSize:12 }}>Limit: {lim}</span>
+                <span style={{ color:C.green, fontWeight:700, fontSize:13 }}>{max}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* FOOTER */}
+      <div style={{ textAlign:'center', padding:'30px 20px', borderTop:`1px solid ${C.border}`,
+        color:C.muted, fontSize:13 }}>
+        <div style={{ marginBottom:8 }}><Logo size="sm" /></div>
+        <div>© 2025 9jaWatchers · Earn with every click... · Secured by Paystack</div>
+      </div>
+    </div>
+  );
+}
+
+// ─── AUTH PAGE ────────────────────────────────────────────────────────────────
+function AuthPage({ mode, goTo, onLogin }) {
+  const isLogin = mode === 'login';
+  const [step, setStep]   = useState(1);
+  const [form, setForm]   = useState({ name:'', email:'', phone:'', password:'', ref:'' });
+  const [loading, setLoading] = useState(false);
+
+  const set = (k, v) => setForm(prev => ({ ...prev, [k]:v }));
+
+  const submit = () => {
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
+      if (isLogin) {
+        if (form.email.toLowerCase().includes('admin')) onLogin('admin');
+        else if (form.email.toLowerCase().includes('premium')) onLogin('premium');
+        else onLogin('basic');
+      } else {
+        setStep(2);
+      }
+    }, 800);
+  };
+
+  const Field = ({ label, k, type='text', placeholder }) => (
+    <div style={{ marginBottom:14 }}>
+      <label style={{ fontSize:12, color:C.muted, display:'block', marginBottom:5 }}>{label}</label>
+      <input type={type} placeholder={placeholder} value={form[k]}
+        onChange={e => set(k, e.target.value)} className="withdraw-input" />
+    </div>
+  );
+
+  return (
+    <div style={{ minHeight:'100vh', background:C.dark, display:'flex',
+      alignItems:'center', justifyContent:'center', padding:20 }}>
+      <div className="fade-in" style={{ width:'100%', maxWidth:440, background:C.card,
+        border:`1px solid ${C.border}`, borderRadius:20, padding:36 }}>
+        <div style={{ textAlign:'center', marginBottom:28 }}>
+          <Logo />
+          <div style={{ color:C.muted, fontSize:13, marginTop:6 }}>Earn with every click...</div>
+        </div>
+
+        {step === 1 && <>
+          <h2 style={{ fontSize:20, fontWeight:800, marginBottom:22, textAlign:'center' }}>
+            {isLogin ? 'Welcome Back 👋' : 'Create Your Account'}
+          </h2>
+          {!isLogin && <Field label="Full Name" k="name" placeholder="e.g. Oluwaseun Ogunseye" />}
+          <Field label="Email Address" k="email" type="email" placeholder="you@email.com" />
+          {!isLogin && <Field label="Phone Number" k="phone" placeholder="08012345678" />}
+          <Field label="Password" k="password" type="password" placeholder="••••••••" />
+          {!isLogin && <Field label="Referral Code (Optional)" k="ref" placeholder="9JW-XXXXXXXX" />}
+          <Btn full onClick={submit} disabled={loading} style={{ marginTop:6 }}>
+            {loading ? 'Please wait...' : isLogin ? 'Login to Dashboard' : 'Continue to Payment →'}
+          </Btn>
+          <p style={{ textAlign:'center', marginTop:18, fontSize:13, color:C.muted }}>
+            {isLogin
+              ? <><span>Don't have an account? </span><span onClick={() => goTo('signup')} style={{ color:C.green, cursor:'pointer', fontWeight:700 }}>Sign Up</span></>
+              : <><span>Already have an account? </span><span onClick={() => goTo('login')} style={{ color:C.green, cursor:'pointer', fontWeight:700 }}>Login</span></>}
+          </p>
+          <Divider />
+          <p style={{ textAlign:'center', fontSize:11, color:C.muted }}>
+            💡 Demo: Login with <strong style={{color:C.green}}>admin@</strong> for admin,&nbsp;
+            <strong style={{color:C.purple}}>premium@</strong> for premium, or any email for basic
+          </p>
+        </>}
+
+        {step === 2 && <>
+          <h2 style={{ fontSize:18, fontWeight:800, marginBottom:6, textAlign:'center' }}>Activate Your Account</h2>
+          <p style={{ color:C.muted, fontSize:13, textAlign:'center', marginBottom:24 }}>
+            Choose a plan to complete your registration
+          </p>
+          <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+            <div style={{ background:C.dark, border:`1px solid ${C.green}55`, borderRadius:14, padding:18 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
+                <div>
+                  <div style={{ fontWeight:800 }}>Basic Plan</div>
+                  <div style={{ color:C.muted, fontSize:12 }}>8 tasks/day · ₦500 bonus</div>
+                </div>
+                <div style={{ fontWeight:900, color:C.green, fontSize:20 }}>₦4,000</div>
+              </div>
+              <Btn full size="sm" onClick={() => onLogin('basic')}>Pay ₦4,000 via Paystack</Btn>
+            </div>
+            <div style={{ background:C.dark, border:`2px solid ${C.purple}55`, borderRadius:14, padding:18 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
+                <div>
+                  <div style={{ fontWeight:800 }}>Premium Plan <Badge color={C.purple}>Best Value</Badge></div>
+                  <div style={{ color:C.muted, fontSize:12 }}>20 tasks/day · ₦1,000 bonus</div>
+                </div>
+                <div style={{ fontWeight:900, color:C.purple, fontSize:20 }}>₦8,000</div>
+              </div>
+              <Btn variant="purple" full size="sm" onClick={() => onLogin('premium')}>Pay ₦8,000 via Paystack</Btn>
+            </div>
+          </div>
+          <div style={{ textAlign:'center', marginTop:16 }}>
+            <span onClick={() => setStep(1)} style={{ color:C.muted, fontSize:13, cursor:'pointer' }}>← Back</span>
+          </div>
+        </>}
+      </div>
+    </div>
+  );
+}
+
+// ─── USER DASHBOARD ───────────────────────────────────────────────────────────
+function UserDashboard({ plan, goTo, onLogout }) {
+  const isPremium = plan === 'premium';
+  const allTasks  = isPremium ? [...BASE_TASKS, ...PREMIUM_EXTRA] : BASE_TASKS;
+  const [tasks, setTasks]     = useState(allTasks.map(t => ({ ...t, done:false })));
+  const [balance, setBalance] = useState(isPremium ? 1000 : 500);
+  const [page, setPage]       = useState('dashboard');
+  const [wForm, setWForm]     = useState({ bank:'', account:'', name:'', amount:'' });
+  const [wDone, setWDone]     = useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  const [upgradeSuccess, setUpgradeSuccess] = useState(false);
+  const [history, setHistory] = useState([
+    { label:'Signup Bonus', amount: isPremium ? 1000 : 500, type:'credit', date:'Today' }
+  ]);
+
+  const refCode    = `9JW-${isPremium ? 'PRE' : 'BAS'}-7842`;
+  const done       = tasks.filter(t => t.done).length;
+  const todayEarned = tasks.filter(t => t.done).reduce((s,t) => s+t.reward, 0);
+
+  const completeTask = (id, reward) => {
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, done:true } : t));
+    setBalance(prev => prev + reward);
+    const task = tasks.find(t => t.id === id);
+    setHistory(prev => [{ label:`Task: ${task?.title.substring(0,40)}...`, amount:reward, type:'credit', date:'Today' }, ...prev]);
+  };
+
+  const handleWithdraw = () => {
+    if (Number(wForm.amount) < 2000 || !wForm.bank || !wForm.account || !wForm.name) return;
+    setWDone(true);
+    setHistory(prev => [{ label:`Withdrawal to ${wForm.bank}`, amount:Number(wForm.amount), type:'debit', date:'Today' }, ...prev]);
+  };
+
+  const setW = (k,v) => setWForm(prev => ({ ...prev, [k]:v }));
+
+  const navItems = [
+    { id:'dashboard', icon:'🏠', label:'Dashboard' },
+    { id:'tasks',     icon:'📋', label:`Tasks (${done}/${tasks.length})` },
+    { id:'withdraw',  icon:'💳', label:'Withdraw' },
+    { id:'referral',  icon:'👥', label:'Referral' },
+    { id:'history',   icon:'📊', label:'History' },
+  ];
+
+  return (
+    <div style={{ display:'flex', height:'100vh', overflow:'hidden' }}>
+      <Sidebar items={navItems} active={page} setPage={setPage} plan={plan}
+        onLogout={onLogout} onUpgrade={() => setShowUpgrade(true)} pendingCount={0} />
+
+      {/* UPGRADE MODAL */}
+      {showUpgrade && !upgradeSuccess && (
+        <div className="modal-overlay">
+          <div className="fade-in" style={{ background:C.card, border:`2px solid ${C.gold}`,
+            borderRadius:20, padding:36, maxWidth:380, width:'90%' }}>
+            <div style={{ fontSize:50, textAlign:'center', marginBottom:10 }}>⭐</div>
+            <h3 style={{ textAlign:'center', fontSize:22, fontWeight:800, marginBottom:8 }}>Go Premium</h3>
+            <p style={{ color:C.muted, textAlign:'center', fontSize:13, marginBottom:22, lineHeight:1.6 }}>
+              Unlock 20 daily tasks, ₦1,000 signup bonus, ₦1,000 per referral, and priority withdrawals.
+            </p>
+            <div style={{ background:C.dark, borderRadius:12, padding:16, marginBottom:22 }}>
+              {[['Upgrade fee','₦8,000'],['New daily tasks','20'],['Referral bonus','₦1,000'],['Signup bonus','₦1,000']].map(([l,v]) => (
+                <div key={l} style={{ display:'flex', justifyContent:'space-between', marginBottom:8, fontSize:14 }}>
+                  <span style={{ color:C.muted }}>{l}</span><span style={{ fontWeight:700, color:C.gold }}>{v}</span>
+                </div>
+              ))}
+            </div>
+            <Btn variant="gold" full onClick={() => { setUpgradeSuccess(true); }} style={{ marginBottom:10 }}>
+              Pay ₦8,000 via Paystack
+            </Btn>
+            <Btn variant="ghost" full size="sm" onClick={() => setShowUpgrade(false)}>Cancel</Btn>
+          </div>
+        </div>
+      )}
+      {upgradeSuccess && (
+        <div className="modal-overlay">
+          <div className="fade-in" style={{ background:C.card, border:`2px solid ${C.green}`,
+            borderRadius:20, padding:36, maxWidth:340, width:'90%', textAlign:'center' }}>
+            <div style={{ fontSize:60, marginBottom:12 }}>✅</div>
+            <h3 style={{ fontSize:20, fontWeight:800, marginBottom:8 }}>Upgrade Successful!</h3>
+            <p style={{ color:C.muted, fontSize:13, marginBottom:22 }}>
+              You are now a Premium member. ₦1,000 bonus has been credited to your wallet.
+            </p>
+            <Btn full onClick={() => { setShowUpgrade(false); setUpgradeSuccess(false); }}>Go to Dashboard</Btn>
+          </div>
+        </div>
+      )}
+
+      {/* MAIN */}
+      <div className="main-scroll main-content" style={{ flex:1, padding:28 }}>
+        <div className="fade-in">
+
+          {/* DASHBOARD */}
+          {page === 'dashboard' && <>
+            <div style={{ marginBottom:24 }}>
+              <h1 style={{ fontSize:24, fontWeight:800, marginBottom:4 }}>Good day, Oluwaseun 👋</h1>
+              <p style={{ color:C.muted, fontSize:14 }}>Here's your earning summary for today</p>
+            </div>
+
+            <div style={{ background:`linear-gradient(135deg,${C.green}11,${C.gold}11)`,
+              border:`1px solid ${C.gold}44`, borderRadius:14, padding:'16px 20px', marginBottom:22,
+              display:'flex', alignItems:'center', gap:14 }}>
+              <span style={{ fontSize:30 }}>🎉</span>
+              <div>
+                <div style={{ fontWeight:800, fontSize:15 }}>Welcome Bonus Credited!</div>
+                <div style={{ color:C.muted, fontSize:13 }}>
+                  {naira(isPremium ? 1000 : 500)} has been added to your wallet. Start completing tasks to earn more!
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display:'flex', gap:14, marginBottom:24, flexWrap:'wrap' }}>
+              <StatCard label="Total Balance"  value={naira(balance)}    icon="💰" color={C.gold}   />
+              <StatCard label="Earned Today"   value={naira(todayEarned)} icon="📈" color={C.green}  />
+              <StatCard label="Tasks Completed" value={`${done}/${tasks.length}`} icon="✅" color={C.blue} />
+              <StatCard label="Your Plan" value={isPremium ? 'Premium' : 'Basic'} icon="🏷️" color={isPremium ? C.purple : C.green} />
+            </div>
+
+            <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:'18px 20px', marginBottom:22 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:10 }}>
+                <span style={{ fontWeight:700 }}>Daily Task Progress</span>
+                <span style={{ color:C.muted, fontSize:13 }}>{done} of {tasks.length} completed</span>
+              </div>
+              <div style={{ height:10, background:'#1a2e1a', borderRadius:10 }}>
+                <div className="progress-bar" style={{ width:`${(done/tasks.length)*100}%`,
+                  height:'100%', background:`linear-gradient(90deg,${C.green},${C.gold})`, borderRadius:10 }} />
+              </div>
+              <div style={{ marginTop:10, display:'flex', justifyContent:'space-between' }}>
+                <span style={{ color:C.muted, fontSize:12 }}>Resets at midnight</span>
+                <span style={{ color:C.green, fontSize:12, fontWeight:700 }}>{tasks.length - done} tasks remaining</span>
+              </div>
+            </div>
+
+            <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
+              <Btn onClick={() => setPage('tasks')}>📋 View Today's Tasks</Btn>
+              <Btn variant="ghost" onClick={() => setPage('withdraw')}>💳 Request Withdrawal</Btn>
+              <Btn variant="gold" size="sm" onClick={() => setPage('referral')}>👥 Referral Program</Btn>
+            </div>
+          </>}
+
+          {/* TASKS */}
+          {page === 'tasks' && <>
+            <div style={{ marginBottom:22 }}>
+              <h1 style={{ fontSize:22, fontWeight:800, marginBottom:4 }}>Today's Tasks</h1>
+              <p style={{ color:C.muted, fontSize:13 }}>Click Start — spend 50 seconds on the page — come back to earn.</p>
+            </div>
+            <div style={{ background:`${C.gold}11`, border:`1px solid ${C.gold}33`, borderRadius:12,
+              padding:'12px 16px', marginBottom:20, display:'flex', gap:10, alignItems:'center' }}>
+              <span style={{ fontSize:18 }}>⚡</span>
+              <div style={{ fontSize:13, color:C.muted }}>
+                <strong style={{ color:C.gold }}>Verification: </strong>
+                Each task opens an external link. Stay for 50 seconds and return — your reward is credited automatically.
+              </div>
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+              {tasks.map(t => <TaskCard key={t.id} task={t} onComplete={completeTask} />)}
+            </div>
+          </>}
+
+          {/* WITHDRAW */}
+          {page === 'withdraw' && <>
+            <h1 style={{ fontSize:22, fontWeight:800, marginBottom:4 }}>Withdraw Earnings</h1>
+            <p style={{ color:C.muted, fontSize:13, marginBottom:22 }}>Funds sent directly to your bank account via Paystack.</p>
+            {wDone ? (
+              <div style={{ textAlign:'center', padding:'60px 20px' }}>
+                <div style={{ fontSize:70, marginBottom:16 }}>✅</div>
+                <div style={{ fontWeight:800, fontSize:22, marginBottom:8 }}>Withdrawal Requested!</div>
+                <div style={{ color:C.muted, fontSize:14, marginBottom:28 }}>
+                  Your request is pending admin approval. Funds will arrive within 24 hours.
+                </div>
+                <Btn onClick={() => { setWDone(false); setWForm({ bank:'', account:'', name:'', amount:'' }); }}>
+                  New Request
+                </Btn>
+              </div>
+            ) : (
+              <div style={{ display:'flex', gap:22, flexWrap:'wrap' }}>
+                <div style={{ flex:1, minWidth:280, background:C.card, border:`1px solid ${C.border}`, borderRadius:16, padding:24 }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:18 }}>
+                    <span style={{ color:C.muted, fontSize:13 }}>Available Balance</span>
+                    <span style={{ fontWeight:900, color:C.gold, fontSize:22 }}>{naira(balance)}</span>
+                  </div>
+                  {[['Bank Name','bank','text','e.g. Zenith Bank'],
+                    ['Account Number','account','text','10-digit number'],
+                    ['Account Name','name','text','As on bank app'],
+                    ['Amount (min ₦2,000)','amount','number','2000']].map(([lbl,k,tp,ph]) => (
+                    <div key={k} style={{ marginBottom:14 }}>
+                      <label style={{ fontSize:12, color:C.muted, display:'block', marginBottom:5 }}>{lbl}</label>
+                      <input type={tp} placeholder={ph} value={wForm[k]}
+                        onChange={e => setW(k, e.target.value)} className="withdraw-input" />
+                    </div>
+                  ))}
+                  {Number(wForm.amount) > 0 && Number(wForm.amount) < 2000 && (
+                    <div style={{ color:C.red, fontSize:12, marginBottom:10 }}>⚠ Minimum withdrawal is ₦2,000</div>
+                  )}
+                  <Btn full disabled={Number(wForm.amount) < 2000 || !wForm.bank || !wForm.name}
+                    onClick={handleWithdraw}>Request Withdrawal</Btn>
+                </div>
+                <div style={{ minWidth:200 }}>
+                  <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:20 }}>
+                    <div style={{ fontWeight:700, marginBottom:14 }}>Withdrawal Info</div>
+                    {[['Min. Amount','₦2,000'],['Processing','Within 24hrs'],['Method','Bank Transfer'],['Fee','₦0 (Free)']].map(([l,v]) => (
+                      <div key={l} style={{ display:'flex', justifyContent:'space-between', marginBottom:10, fontSize:13 }}>
+                        <span style={{ color:C.muted }}>{l}</span>
+                        <span style={{ fontWeight:700 }}>{v}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </>}
+
+          {/* REFERRAL */}
+          {page === 'referral' && <>
+            <h1 style={{ fontSize:22, fontWeight:800, marginBottom:4 }}>Referral Program</h1>
+            <p style={{ color:C.muted, fontSize:13, marginBottom:22 }}>
+              Earn {isPremium ? '₦1,000' : '₦500'} for every person who activates an account with your code.
+            </p>
+            <div style={{ background:`linear-gradient(135deg,${C.card},#1a2e1a)`,
+              border:`1px solid ${C.green}44`, borderRadius:18, padding:28, marginBottom:20 }}>
+              <div style={{ fontSize:13, color:C.muted, marginBottom:8 }}>Your Referral Code</div>
+              <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:22 }}>
+                <div style={{ background:C.dark, border:`1px solid ${C.border}`, borderRadius:10,
+                  padding:'12px 18px', fontWeight:900, fontSize:20, letterSpacing:3, color:C.green, flex:1 }}>
+                  {refCode}
+                </div>
+                <Btn size="sm" onClick={() => { navigator.clipboard?.writeText(refCode); }}>Copy</Btn>
+              </div>
+              <div style={{ display:'flex', gap:14, flexWrap:'wrap' }}>
+                <StatCard label="Total Referrals"  value="0"  icon="👥" color={C.blue}  />
+                <StatCard label="Referral Earnings" value="₦0" icon="💰" color={C.gold}  />
+                <StatCard label="Per Referral" value={isPremium ? '₦1,000' : '₦500'} icon="🎯" color={C.green} />
+              </div>
+            </div>
+            <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:20 }}>
+              <div style={{ fontWeight:700, marginBottom:14 }}>Share your link</div>
+              <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+                {['📱 WhatsApp','📘 Facebook','🐦 Twitter','🔗 Copy Link'].map(s => (
+                  <button key={s} style={{ background:C.dark, border:`1px solid ${C.border}`,
+                    borderRadius:8, padding:'9px 18px', color:C.text, cursor:'pointer', fontSize:13, fontWeight:600 }}>
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>}
+
+          {/* HISTORY */}
+          {page === 'history' && <>
+            <h1 style={{ fontSize:22, fontWeight:800, marginBottom:22 }}>Transaction History</h1>
+            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+              {history.map((tx, i) => (
+                <div key={i} style={{ background:C.card, border:`1px solid ${C.border}`,
+                  borderRadius:12, padding:'14px 18px', display:'flex',
+                  justifyContent:'space-between', alignItems:'center' }}>
+                  <div>
+                    <div style={{ fontWeight:600, fontSize:14 }}>{tx.label}</div>
+                    <div style={{ color:C.muted, fontSize:12, marginTop:3 }}>{tx.date}</div>
+                  </div>
+                  <span style={{ color: tx.type==='credit' ? C.green : C.red, fontWeight:800, fontSize:16 }}>
+                    {tx.type==='credit' ? '+' : '-'}{naira(tx.amount)}
+                  </span>
+                </div>
+              ))}
+              {history.length === 0 && (
+                <div style={{ textAlign:'center', color:C.muted, padding:40 }}>No transactions yet</div>
+              )}
+            </div>
+          </>}
+
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── ADMIN DASHBOARD ──────────────────────────────────────────────────────────
+function AdminDashboard({ onLogout }) {
+  const [page, setPage] = useState('overview');
+  const [tForm, setTForm] = useState({ type:'video', title:'', url:'', reward:5, plan:'both' });
+  const [taskAdded, setTaskAdded] = useState(false);
+  const [tasks, setTasks] = useState([...BASE_TASKS, ...PREMIUM_EXTRA]);
+  const [withdrawals, setWithdrawals] = useState([
+    { id:1, user:'Chidi Okafor',    plan:'basic',   bank:'GTBank',     account:'0123456789', amount:2500, status:'pending',  date:'Today' },
+    { id:2, user:'Amaka Nwosu',     plan:'premium', bank:'Zenith Bank', account:'9876543210', amount:5000, status:'pending',  date:'Today' },
+    { id:3, user:'Tunde Balogun',   plan:'basic',   bank:'First Bank', account:'3456789012', amount:3000, status:'approved', date:'Yesterday' },
+    { id:4, user:'Ngozi Eze',       plan:'premium', bank:'UBA',        account:'6789012345', amount:8000, status:'rejected', date:'Yesterday' },
+    { id:5, user:'Kelechi Ike',     plan:'premium', bank:'Access Bank', account:'1234509876', amount:4500, status:'pending',  date:'Today' },
+  ]);
+
+  const approve = (id) => setWithdrawals(p => p.map(w => w.id===id ? { ...w, status:'approved' } : w));
+  const reject  = (id) => setWithdrawals(p => p.map(w => w.id===id ? { ...w, status:'rejected' } : w));
+  const removeTask = (id) => setTasks(p => p.filter(t => t.id !== id));
+  const setT = (k,v) => setTForm(p => ({ ...p, [k]:v }));
+
+  const addTask = () => {
+    if (!tForm.title || !tForm.url) return;
+    setTasks(p => [...p, { ...tForm, id:Date.now(), done:false }]);
+    setTaskAdded(true);
+    setTForm({ type:'video', title:'', url:'', reward:5, plan:'both' });
+    setTimeout(() => setTaskAdded(false), 3000);
+  };
+
+  const pending   = withdrawals.filter(w => w.status==='pending');
+  const approved  = withdrawals.filter(w => w.status==='approved');
+  const rejected  = withdrawals.filter(w => w.status==='rejected');
+
+  const navItems = [
+    { id:'overview',    icon:'📊', label:'Overview' },
+    { id:'tasks',       icon:'📋', label:'Manage Tasks' },
+    { id:'withdrawals', icon:'💳', label:'Withdrawals', badge: pending.length },
+    { id:'users',       icon:'👥', label:'Users' },
+  ];
+
+  const statusBadge = (s) => {
+    if (s==='pending')  return <Badge color={C.gold}>⏳ Pending</Badge>;
+    if (s==='approved') return <Badge color={C.green}>✓ Approved</Badge>;
+    return <Badge color={C.red}>✕ Rejected</Badge>;
+  };
+
+  return (
+    <div style={{ display:'flex', height:'100vh', overflow:'hidden' }}>
+      <Sidebar items={navItems} active={page} setPage={setPage} plan="admin"
+        onLogout={onLogout} pendingCount={pending.length} />
+
+      <div className="main-scroll main-content" style={{ flex:1, padding:28 }}>
+        <div className="fade-in">
+
+          {/* OVERVIEW */}
+          {page === 'overview' && <>
+            <div style={{ marginBottom:24 }}>
+              <h1 style={{ fontSize:24, fontWeight:800, marginBottom:4 }}>Admin Overview</h1>
+              <p style={{ color:C.muted, fontSize:14 }}>Platform performance at a glance</p>
+            </div>
+            <div style={{ display:'flex', gap:14, flexWrap:'wrap', marginBottom:28 }}>
+              <StatCard label="Total Users"    value="1,284" icon="👥" color={C.blue}   />
+              <StatCard label="Basic Users"    value="918"   icon="🟢" color={C.green}  />
+              <StatCard label="Premium Users"  value="366"   icon="⭐" color={C.purple} />
+              <StatCard label="Pending Withdrawals" value={String(pending.length)} icon="⏳" color={C.red}  />
+              <StatCard label="Active Tasks"   value={String(tasks.length)} icon="📋" color={C.gold}  />
+              <StatCard label="Total Paid Out" value="₦2.4M" icon="💸" color={C.green}  />
+            </div>
+            <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:20 }}>
+              <div style={{ fontWeight:700, fontSize:16, marginBottom:16 }}>
+                🔔 Pending Withdrawals ({pending.length})
+              </div>
+              {pending.length === 0
+                ? <div style={{ color:C.muted, fontSize:13, textAlign:'center', padding:20 }}>All caught up! No pending requests.</div>
+                : pending.map(w => (
+                  <div key={w.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
+                    padding:'12px 0', borderBottom:`1px solid ${C.border}`, flexWrap:'wrap', gap:10 }}>
+                    <div>
+                      <div style={{ fontWeight:600 }}>{w.user}</div>
+                      <div style={{ color:C.muted, fontSize:12 }}>{w.bank} · {w.account} · {w.date}</div>
+                    </div>
+                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                      <span style={{ fontWeight:900, color:C.gold }}>{naira(w.amount)}</span>
+                      <Btn size="sm" onClick={() => approve(w.id)}>✓ Approve</Btn>
+                      <Btn variant="danger" size="sm" onClick={() => reject(w.id)}>✕ Reject</Btn>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </>}
+
+          {/* TASKS */}
+          {page === 'tasks' && <>
+            <div style={{ marginBottom:22 }}>
+              <h1 style={{ fontSize:22, fontWeight:800, marginBottom:4 }}>Manage Tasks</h1>
+              <p style={{ color:C.muted, fontSize:13 }}>Upload tasks for Basic and Premium users. Active tasks appear on user dashboards daily.</p>
+            </div>
+            <div style={{ display:'flex', gap:22, flexWrap:'wrap' }}>
+              <div style={{ flex:1, minWidth:300, background:C.card, border:`1px solid ${C.border}`, borderRadius:16, padding:24 }}>
+                <div style={{ fontWeight:800, fontSize:16, marginBottom:18 }}>+ Upload New Task</div>
+                {taskAdded && (
+                  <div style={{ background:`${C.green}22`, border:`1px solid ${C.green}`, borderRadius:8,
+                    padding:'10px 14px', marginBottom:14, fontSize:13, color:C.green }}>
+                    ✅ Task uploaded successfully!
+                  </div>
+                )}
+                {[['Task Type','type','select',['video','follow','like','comment']],
+                  ['Task Title','title','text',null],
+                  ['URL / Link','url','text',null],
+                  ['Reward Amount (₦)','reward','number',null],
+                  ['Assign To','plan','select',['basic','premium','both']]].map(([lbl,k,tp,opts]) => (
+                  <div key={k} style={{ marginBottom:14 }}>
+                    <label style={{ fontSize:12, color:C.muted, display:'block', marginBottom:5 }}>{lbl}</label>
+                    {tp === 'select'
+                      ? <select value={tForm[k]} onChange={e => setT(k,e.target.value)} className="withdraw-input">
+                          {opts.map(o => <option key={o} value={o}>{o.charAt(0).toUpperCase()+o.slice(1)}</option>)}
+                        </select>
+                      : <input type={tp} placeholder={lbl} value={tForm[k]}
+                          onChange={e => setT(k, e.target.value)} className="withdraw-input" />}
+                  </div>
+                ))}
+                <Btn full onClick={addTask} disabled={!tForm.title || !tForm.url}>Upload Task</Btn>
+              </div>
+              <div style={{ flex:1.5, minWidth:300 }}>
+                <div style={{ fontWeight:700, fontSize:15, marginBottom:14 }}>Active Tasks ({tasks.length})</div>
+                <div style={{ display:'flex', flexDirection:'column', gap:8, maxHeight:520, overflowY:'auto' }}>
+                  {tasks.map(t => (
+                    <div key={t.id} style={{ background:C.card, border:`1px solid ${C.border}`,
+                      borderRadius:12, padding:'12px 16px', display:'flex',
+                      justifyContent:'space-between', alignItems:'center' }}>
+                      <div style={{ minWidth:0, flex:1, marginRight:12 }}>
+                        <div style={{ fontSize:13, fontWeight:600, whiteSpace:'nowrap',
+                          overflow:'hidden', textOverflow:'ellipsis' }}>{t.title}</div>
+                        <div style={{ display:'flex', gap:6, marginTop:5, flexWrap:'wrap' }}>
+                          <Badge color={TASK_COLOR[t.type] || C.green}>{t.type}</Badge>
+                          <Badge color={C.gold}>₦{t.reward}</Badge>
+                          <Badge color={C.muted}>{t.plan_target || t.plan || 'both'}</Badge>
+                        </div>
+                      </div>
+                      <Btn variant="danger" size="sm" onClick={() => removeTask(t.id)}>Remove</Btn>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </>}
+
+          {/* WITHDRAWALS */}
+          {page === 'withdrawals' && <>
+            <div style={{ marginBottom:22 }}>
+              <h1 style={{ fontSize:22, fontWeight:800, marginBottom:4 }}>Withdrawal Requests</h1>
+              <p style={{ color:C.muted, fontSize:13 }}>Approve or reject withdrawal requests. Approved transfers are processed via Paystack.</p>
+            </div>
+            <div style={{ display:'flex', gap:14, marginBottom:24, flexWrap:'wrap' }}>
+              <StatCard label="Pending"  value={String(pending.length)}  icon="⏳" color={C.gold}  />
+              <StatCard label="Approved" value={String(approved.length)} icon="✅" color={C.green} />
+              <StatCard label="Rejected" value={String(rejected.length)} icon="❌" color={C.red}   />
+              <StatCard label="Total Volume" value={naira(withdrawals.reduce((s,w) => s+w.amount, 0))} icon="💸" color={C.blue} />
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+              {withdrawals.map(w => (
+                <div key={w.id} style={{ background:C.card, border:`1px solid ${C.border}`,
+                  borderRadius:14, padding:'16px 20px' }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:12 }}>
+                    <div>
+                      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:5, flexWrap:'wrap' }}>
+                        <span style={{ fontWeight:700 }}>{w.user}</span>
+                        <Badge color={w.plan==='premium' ? C.purple : C.green}>{w.plan}</Badge>
+                      </div>
+                      <div style={{ color:C.muted, fontSize:12 }}>{w.bank} · {w.account} · {w.date}</div>
+                    </div>
+                    <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+                      <span style={{ fontWeight:900, fontSize:18, color:C.gold }}>{naira(w.amount)}</span>
+                      {w.status === 'pending'
+                        ? <>
+                            <Btn size="sm" onClick={() => approve(w.id)}>✓ Approve</Btn>
+                            <Btn variant="danger" size="sm" onClick={() => reject(w.id)}>✕ Reject</Btn>
+                          </>
+                        : statusBadge(w.status)}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>}
+
+          {/* USERS */}
+          {page === 'users' && <>
+            <div style={{ marginBottom:22 }}>
+              <h1 style={{ fontSize:22, fontWeight:800, marginBottom:4 }}>User Management</h1>
+              <p style={{ color:C.muted, fontSize:13 }}>View and manage all registered users.</p>
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+              {[{ name:'Oluwaseun Ogunseye', email:'seun@email.com',  plan:'premium', balance:14500, joined:'10 May', tasks:18, refs:3 },
+                { name:'Chidi Okafor',       email:'chidi@email.com', plan:'basic',   balance:3200,  joined:'11 May', tasks:6,  refs:1 },
+                { name:'Amaka Nwosu',        email:'amaka@email.com', plan:'premium', balance:22000, joined:'8 May',  tasks:20, refs:7 },
+                { name:'Tunde Balogun',      email:'tunde@email.com', plan:'basic',   balance:1800,  joined:'12 May', tasks:5,  refs:0 },
+                { name:'Kelechi Ike',        email:'kele@email.com',  plan:'premium', balance:9700,  joined:'9 May',  tasks:15, refs:2 },
+                { name:'Ngozi Eze',          email:'ngozi@email.com', plan:'basic',   balance:5400,  joined:'7 May',  tasks:8,  refs:4 },
+              ].map((u, i) => (
+                <div key={i} style={{ background:C.card, border:`1px solid ${C.border}`,
+                  borderRadius:14, padding:'14px 20px', display:'flex',
+                  justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:12 }}>
+                  <div>
+                    <div style={{ fontWeight:700 }}>{u.name}</div>
+                    <div style={{ color:C.muted, fontSize:12, marginTop:3 }}>{u.email} · Joined {u.joined}</div>
+                  </div>
+                  <div style={{ display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
+                    <Badge color={u.plan==='premium' ? C.purple : C.green}>{u.plan}</Badge>
+                    <span style={{ color:C.gold, fontWeight:700, fontSize:14 }}>{naira(u.balance)}</span>
+                    <span style={{ color:C.muted, fontSize:12 }}>Tasks: {u.tasks}</span>
+                    <span style={{ color:C.muted, fontSize:12 }}>Refs: {u.refs}</span>
+                    <Btn variant="danger" size="sm">Suspend</Btn>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>}
+
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── ROOT APP ─────────────────────────────────────────────────────────────────
+function App() {
+  const [screen, setScreen] = useState('landing');
+  const [role, setRole]     = useState(null);
+
+  const login = (r) => { setRole(r); setScreen('app'); };
+  const logout = () => { setRole(null); setScreen('landing'); };
+
+  if (screen === 'landing') return <LandingPage goTo={setScreen} />;
+  if (screen === 'login')   return <AuthPage mode="login"  goTo={setScreen} onLogin={login} />;
+  if (screen === 'signup')  return <AuthPage mode="signup" goTo={setScreen} onLogin={login} />;
+  if (screen === 'app') {
+    if (role === 'admin') return <AdminDashboard onLogout={logout} />;
+    return <UserDashboard plan={role} goTo={setScreen} onLogout={logout} />;
+  }
+  return null;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
